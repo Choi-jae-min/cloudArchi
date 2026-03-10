@@ -10,3 +10,7 @@ http://52.79.75.227:8080/actuator/info
 
 ### RDS 보안 그룹 연결
 <img width="3394" height="1128" alt="image" src="https://github.com/user-attachments/assets/420edd69-8346-4291-94c0-de53f9baf388" />
+
+---
+### s3 이미지 url
+https://camp-health-jaseminsparta-files.s3.ap-northeast-2.amazonaws.com/uploads/4cc810f8-2deb-4b9b-a439-1366[…]abd1c923ba0a918321ec7fdbf19f797b59b6e
