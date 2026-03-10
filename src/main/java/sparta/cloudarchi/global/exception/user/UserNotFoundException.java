@@ -1,4 +1,4 @@
-package sparta.cloudarchi.global.exception;
+package sparta.cloudarchi.global.exception.user;
 
 import org.springframework.http.HttpStatus;
 

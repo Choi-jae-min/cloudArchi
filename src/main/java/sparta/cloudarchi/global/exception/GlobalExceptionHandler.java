@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import sparta.cloudarchi.global.exception.s3.S3Exception;
+import sparta.cloudarchi.global.exception.user.UserException;
 
 @Slf4j
 @RestControllerAdvice
@@ -24,6 +26,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserException.class)
     public ResponseEntity<String> handleUserException(UserException ex) {
         log.error("유저 예외 발생 : {}", ex.getMessage());
+        return ResponseEntity.status(ex.getStatus()).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(S3Exception.class)
+    public ResponseEntity<String> handleS3Exception(S3Exception ex) {
+        log.error("S3 예외 발생 : {}", ex.getMessage());
         return ResponseEntity.status(ex.getStatus()).body(ex.getMessage());
     }
 }

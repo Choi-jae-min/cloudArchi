@@ -3,7 +3,7 @@ package sparta.cloudarchi.user.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import sparta.cloudarchi.global.exception.UserNotFoundException;
+import sparta.cloudarchi.global.exception.user.UserNotFoundException;
 import sparta.cloudarchi.user.dto.UserRequestDto;
 import sparta.cloudarchi.user.dto.UserResponseDto;
 import sparta.cloudarchi.user.entity.User;
