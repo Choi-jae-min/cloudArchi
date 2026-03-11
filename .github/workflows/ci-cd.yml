@@ -71,8 +71,8 @@ jobs:                       # 작업 정의
             --instance-ids ${{ vars.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "docker pull your-dockerhub-id/your-image:latest",
+              "docker pull $IMAGE_URI:$SHORT_SHA",
               "docker stop myapp || true",
               "docker rm myapp || true",
-              "docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod your-dockerhub-id/your-image:latest"
+              "docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod $IMAGE_URI:$SHORT_SHA"
             ]'
