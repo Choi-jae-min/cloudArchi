@@ -1,0 +1,53 @@
+name: ci.yml # 작업 이름
+
+on:  # 어느 시점에 해당 작업이 동작할지 설정
+  push:
+    branches: [main] # main 브랜치에 푸시 할때 동작 PR은 검증이 안된코드라 X
+
+jobs:                       # 작업 정의
+  build:
+    runs-on: ubuntu-latest  # Runner 환경
+
+    steps:                  # 실행할 단계들
+      - name: Checkout code
+        uses: actions/checkout@v4     # 미리 만들어진 Action 사용 , GitHub Marketplace에 있는 기능을 실행  checkout 이라는 기능 4버전을 사용해라
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:                          # Action에 전달할 옵션
+          java-version: '17'
+          distribution: 'corretto'
+
+      # Step 3: Gradle 캐시
+      - name: Cache Gradle packages
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run tests # 작업 이름
+        run: ./gradlew test # 작업 내용
+
+      - name: Build JAR
+        run: ./gradlew bootJar  # jar 파일 생성
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v4 #https://github.com/docker/login-action 에서 버전 확인가능
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}  #Docker Hub의 사용자 ID
+          password: ${{ secrets.DOCKERHUB_TOKEN }}  #Docker Hub에서 발급 받은 사용자 Token
+
+      - name: build and push Docker image to docker hub
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_URI=${{ vars.DOCKERHUB_USERNAME }}/cloudarchi
+          
+          docker build --platform linux/arm64 -t $IMAGE_URI:$SHORT_SHA .
+          
+          docker push $IMAGE_URI:$SHORT_SHA
+          
+          echo "✅ Pushed: $IMAGE_URI:$SHORT_SHA"
