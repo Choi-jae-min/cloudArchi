@@ -74,10 +74,10 @@ jobs:                       # 작업 정의
           username: ${{ vars.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            docker pull ${{ vars.DOCKERHUB_USERNAME }}/cloudarchi:latest
-            docker stop myapp || true
-            docker rm myapp || true
-            docker run -d -p 8080:8080 \
+            sudo docker pull ${{ vars.DOCKERHUB_USERNAME }}/cloudarchi:latest
+            sudo docker stop myapp || true
+            sudo docker rm myapp || true
+            sudo docker run -d -p 8080:8080 \
               --name myapp \
               -e SPRING_PROFILES_ACTIVE=prod \
               ${{ vars.DOCKERHUB_USERNAME }}/cloudarchi:latest
