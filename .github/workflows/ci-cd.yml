@@ -4,6 +4,10 @@ on:  # 어느 시점에 해당 작업이 동작할지 설정
   push:
     branches: [main] # main 브랜치에 푸시 할때 동작 PR은 검증이 안된코드라 X
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:                       # 작업 정의
   build:
     runs-on: ubuntu-latest  # Runner 환경
