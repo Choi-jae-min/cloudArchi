@@ -67,12 +67,15 @@ jobs:                       # 작업 정의
       # docker pull 이미지 가져오기 docker stop 기존 컨테이너 중지 docker rm 제거 docker run 실행
       - name: pull image from dockerhub and deploy
         run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_URI=${{ vars.DOCKERHUB_USERNAME }}/cloudarchi
+          
           aws ssm send-command \
-            --instance-ids ${{ vars.EC2_INSTANCE_ID }} \
+            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=[
-              "docker pull $IMAGE_URI:$SHORT_SHA",
-              "docker stop myapp || true",
-              "docker rm myapp || true",
-              "docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod $IMAGE_URI:$SHORT_SHA"
-            ]'
+            --parameters "commands=[
+              \"sudo docker pull $IMAGE_URI:$SHORT_SHA\",
+              \"sudo docker stop myapp || true\",
+              \"sudo docker rm myapp || true\",
+              \"sudo docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod $IMAGE_URI:$SHORT_SHA\"
+            ]"
