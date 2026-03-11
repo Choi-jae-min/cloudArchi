@@ -65,21 +65,14 @@ jobs:                       # 작업 정의
       # aws ssm send-command ssm 커멘드를 넣겠다 선언 vars.EC2_INSTANCE_ID 로 인스턴스 아이디 가져옴
       # SSM이 사용할 명령 실행 방식을 지정 | 실제로 EC2 안에서 실행할 명령 목록 시작
       # docker pull 이미지 가져오기 docker stop 기존 컨테이너 중지 docker rm 제거 docker run 실행
-
-      #-> ssm 포기 후 ssh로 변경...
       - name: pull image from dockerhub and deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ vars.EC2_HOST }}
-          username: ${{ vars.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo docker pull ${{ vars.DOCKERHUB_USERNAME }}/cloudarchi:latest
-            sudo docker stop myapp || true
-            sudo docker rm myapp || true
-            sudo docker run -d -p 8080:8080 \
-              --name myapp \
-              -e SPRING_PROFILES_ACTIVE=prod \
-              ${{ vars.DOCKERHUB_USERNAME }}/cloudarchi:latest
-          
-    
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ vars.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "docker pull your-dockerhub-id/your-image:latest",
+              "docker stop myapp || true",
+              "docker rm myapp || true",
+              "docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod your-dockerhub-id/your-image:latest"
+            ]'

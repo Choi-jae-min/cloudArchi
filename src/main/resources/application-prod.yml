@@ -1,0 +1,30 @@
+app:
+  s3:
+    bucket: ${BUCKET_NAME}
+
+spring:
+  config:
+    import: aws-parameterstore:/camp-cloudArchi-app/prod/
+  datasource:
+    url: ${DB_URL}:3306/test
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+  info:
+    env:
+      enabled: true
+
+info:
+  team-name: ${team-name}

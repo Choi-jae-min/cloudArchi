@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: cloudArchi
+  servlet:
+    multipart:
+      max-file-size: 10MB
+
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
