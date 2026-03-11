@@ -1,4 +1,4 @@
-name: ci.yml # 작업 이름
+name: ci-cd.yml # 작업 이름
 
 on:  # 어느 시점에 해당 작업이 동작할지 설정
   push:
@@ -41,6 +41,7 @@ jobs:                       # 작업 정의
           username: ${{ vars.DOCKERHUB_USERNAME }}  #Docker Hub의 사용자 ID
           password: ${{ secrets.DOCKERHUB_TOKEN }}  #Docker Hub에서 발급 받은 사용자 Token
 
+      #SHORT_SHA 와 IMAGE_URI 선언 -> docker build 로 이미지 생성 docker push로 이미지 hub에 등록
       - name: build and push Docker image to docker hub
         run: |
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
@@ -51,3 +52,23 @@ jobs:                       # 작업 정의
           docker push $IMAGE_URI:$SHORT_SHA
           
           echo "✅ Pushed: $IMAGE_URI:$SHORT_SHA"
+
+      - name: Configure AWS credentials # aws 자격증명
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      # aws ssm send-command ssm 커멘드를 넣겠다 선언 vars.EC2_INSTANCE_ID 로 인스턴스 아이디 가져옴
+      # SSM이 사용할 명령 실행 방식을 지정 | 실제로 EC2 안에서 실행할 명령 목록 시작
+      # docker pull 이미지 가져오기 docker stop 기존 컨테이너 중지 docker rm 제거 docker run 실행
+      - name: pull image from dockerhub and deploy
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ vars.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "docker pull your-dockerhub-id/your-image:latest",
+              "docker stop myapp || true",
+              "docker rm myapp || true",
+              "docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod your-dockerhub-id/your-image:latest"
+            ]'
