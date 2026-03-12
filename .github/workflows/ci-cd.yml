@@ -138,44 +138,52 @@ jobs:                       # 작업 정의
         env:
           ASG_NAME: ${{ vars.ASG_NAME }}
         run: |
+          EXISTING_ID=$(aws autoscaling describe-instance-refreshes \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --query "InstanceRefreshes[?Status=='Pending' || Status=='InProgress'] | [0].InstanceRefreshId" \
+            --output text)
+          
+          if [ "$EXISTING_ID" != "None" ] && [ -n "$EXISTING_ID" ]; then
+            echo "이미 진행 중인 Instance Refresh 발견: $EXISTING_ID"
+            echo "refresh_id=$EXISTING_ID" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
           REFRESH_ID=$(aws autoscaling start-instance-refresh \
-            --auto-scaling-group-name ${ASG_NAME} \
-            --preferences '{
-              "MinHealthyPercentage": 100,
-              "InstanceWarmup": 120
-            }' \
+            --auto-scaling-group-name "$ASG_NAME" \
+            --preferences '{"MinHealthyPercentage":100,"InstanceWarmup":120}' \
             --query 'InstanceRefreshId' \
             --output text)
-  
-          echo "refresh_id=${REFRESH_ID}" >> $GITHUB_OUTPUT
-          echo "Instance Refresh 시작: ${REFRESH_ID}"
           
-          - name: Wait for Instance Refresh
-                  env:
-                    ASG_NAME: ${{ vars.ASG_NAME }}
-                    REFRESH_ID: ${{ steps.refresh.outputs.refresh_id }}
-                  run: |
-                    echo "⏳ Instance Refresh 완료 대기 중..."
+          echo "새 Instance Refresh 시작: $REFRESH_ID"
+          echo "refresh_id=$REFRESH_ID" >> $GITHUB_OUTPUT
+          
+      - name: Wait for Instance Refresh
+        env:
+          ASG_NAME: ${{ vars.ASG_NAME }}
+          REFRESH_ID: ${{ steps.refresh.outputs.refresh_id }}
+        run: |
+          echo "⏳ Instance Refresh 완료 대기 중..."
 
-                    for i in $(seq 1 30); do
-                      STATUS=$(aws autoscaling describe-instance-refreshes \
-                        --auto-scaling-group-name "$ASG_NAME" \
-                        --instance-refresh-ids "$REFRESH_ID" \
-                        --query 'InstanceRefreshes[0].Status' \
-                        --output text)
+          for i in $(seq 1 30); do
+            STATUS=$(aws autoscaling describe-instance-refreshes \
+              --auto-scaling-group-name "$ASG_NAME" \
+              --instance-refresh-ids "$REFRESH_ID" \
+              --query 'InstanceRefreshes[0].Status' \
+              --output text)
 
-                      echo "시도 ${i}/30 - 상태: ${STATUS}"
+            echo "시도 ${i}/30 - 상태: ${STATUS}"
 
-                      if [ "$STATUS" = "Successful" ]; then
-                        echo "Instance Refresh 성공"
-                        exit 0
-                      elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
-                        echo "Instance Refresh 실패: $STATUS"
-                        exit 1
-                      fi
+            if [ "$STATUS" = "Successful" ]; then
+              echo "Instance Refresh 성공"
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "Instance Refresh 실패: $STATUS"
+              exit 1
+            fi
 
-                      sleep 30
-                    done
+            sleep 30
+          done
 
-                    echo "Instance Refresh 타임아웃"
-                    exit 1
+          echo "Instance Refresh 타임아웃"
+          exit 1
