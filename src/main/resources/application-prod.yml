@@ -8,14 +8,14 @@ spring:
   config:
     import: aws-parameterstore:/camp-cloudArchi-app/prod/
   datasource:
-    url: ${DB_URL}:3306/mysql
+    url: ${DB_URL}:3306/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create
     show-sql: false
 
 management:
