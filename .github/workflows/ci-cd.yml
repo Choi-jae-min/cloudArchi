@@ -57,25 +57,89 @@ jobs:                       # 작업 정의
           
           echo "✅ Pushed: $IMAGE_URI:$SHORT_SHA"
 
-      - name: Configure AWS credentials # aws 자격증명
+  # aws ssm send-command ssm 커멘드를 넣겠다 선언 vars.EC2_INSTANCE_ID 로 인스턴스 아이디 가져옴
+  # SSM이 사용할 명령 실행 방식을 지정 | 실제로 EC2 안에서 실행할 명령 목록 시작
+  # docker pull 이미지 가져오기 docker stop 기존 컨테이너 중지 docker rm 제거 docker run 실행
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-      # aws ssm send-command ssm 커멘드를 넣겠다 선언 vars.EC2_INSTANCE_ID 로 인스턴스 아이디 가져옴
-      # SSM이 사용할 명령 실행 방식을 지정 | 실제로 EC2 안에서 실행할 명령 목록 시작
-      # docker pull 이미지 가져오기 docker stop 기존 컨테이너 중지 docker rm 제거 docker run 실행
-      - name: pull image from dockerhub and deploy
+
+      - name: Update Launch Template
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          LAUNCH_TEMPLATE_ID: ${{ vars.LAUNCH_TEMPLATE_ID }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
         run: |
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          IMAGE_URI=${{ vars.DOCKERHUB_USERNAME }}/cloudarchi
-          
-          aws ssm send-command \
-            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
-            --document-name "AWS-RunShellScript" \
-            --parameters "commands=[
-              \"sudo docker pull $IMAGE_URI:$SHORT_SHA\",
-              \"sudo docker stop myapp || true\",
-              \"sudo docker rm myapp || true\",
-              \"sudo docker run -d -p 8080:8080 --name myapp -e SPRING_PROFILES_ACTIVE=prod $IMAGE_URI:$SHORT_SHA\"
-            ]"
+          USER_DATA=$(cat <<'USERDATA' | sed "s|__IMAGE_TAG__|${IMAGE_TAG}|g; s|__DOCKERHUB_USERNAME__|${DOCKERHUB_USERNAME}|g" | base64 -w 0
+          #!/bin/bash
+          set -e
+  
+          DOCKERHUB_USERNAME="__DOCKERHUB_USERNAME__"
+          IMAGE_NAME="cloudarchi"
+          IMAGE_TAG="__IMAGE_TAG__"
+          CONTAINER_NAME="myapp"
+  
+          IMAGE_URI="${DOCKERHUB_USERNAME}/${IMAGE_NAME}:${IMAGE_TAG}"
+  
+          dnf update -y
+          dnf install -y docker
+          systemctl enable docker
+          systemctl start docker
+  
+          until docker info > /dev/null 2>&1; do
+            sleep 2
+          done
+  
+          docker stop ${CONTAINER_NAME} || true
+          docker rm ${CONTAINER_NAME} || true
+  
+          docker pull ${IMAGE_URI}
+  
+          docker run -d \
+            -p 8080:8080 \
+            --restart unless-stopped \
+            --name ${CONTAINER_NAME} \
+            -e SPRING_PROFILES_ACTIVE=prod \
+            ${IMAGE_URI}
+          USERDATA
+          )
+  
+          NEW_VERSION=$(aws ec2 create-launch-template-version \
+            --launch-template-id ${LAUNCH_TEMPLATE_ID} \
+            --source-version '$Latest' \
+            --launch-template-data "{\"UserData\":\"${USER_DATA}\"}" \
+            --query 'LaunchTemplateVersion.VersionNumber' \
+            --output text)
+  
+          echo "LaunchTemplate v${NEW_VERSION} 생성 완료"
+  
+          aws ec2 modify-launch-template \
+            --launch-template-id ${LAUNCH_TEMPLATE_ID} \
+            --default-version ${NEW_VERSION}
+  
+          echo "기존 → v${NEW_VERSION} 변경 완료"
+
+      - name: Start Instance Refresh
+        id: refresh
+        env:
+          ASG_NAME: ${{ vars.ASG_NAME }}
+        run: |
+          REFRESH_ID=$(aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name ${ASG_NAME} \
+            --preferences '{
+              "MinHealthyPercentage": 100,
+              "InstanceWarmup": 120
+            }' \
+            --query 'InstanceRefreshId' \
+            --output text)
+  
+          echo "refresh_id=${REFRESH_ID}" >> $GITHUB_OUTPUT
+          echo "Instance Refresh 시작: ${REFRESH_ID}"
