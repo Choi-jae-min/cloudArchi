@@ -11,10 +11,16 @@ permissions:
 jobs:                       # 작업 정의
   build:
     runs-on: ubuntu-latest  # Runner 환경
+    outputs:
+      image_tag: ${{ steps.vars.outputs.short_sha }}
 
     steps:                  # 실행할 단계들
       - name: Checkout code
         uses: actions/checkout@v4     # 미리 만들어진 Action 사용 , GitHub Marketplace에 있는 기능을 실행  checkout 이라는 기능 4버전을 사용해라
+
+      - name: Set short SHA
+        id: vars
+        run: echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -48,7 +54,7 @@ jobs:                       # 작업 정의
       #SHORT_SHA 와 IMAGE_URI 선언 -> docker build 로 이미지 생성 docker push로 이미지 hub에 등록
       - name: build and push Docker image to docker hub
         run: |
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          SHORT_SHA=${{ steps.vars.outputs.short_sha }}
           IMAGE_URI=${{ vars.DOCKERHUB_USERNAME }}/cloudarchi
           
           docker build --platform linux/arm64 -t $IMAGE_URI:$SHORT_SHA .
@@ -143,3 +149,33 @@ jobs:                       # 작업 정의
   
           echo "refresh_id=${REFRESH_ID}" >> $GITHUB_OUTPUT
           echo "Instance Refresh 시작: ${REFRESH_ID}"
+          
+          - name: Wait for Instance Refresh
+                  env:
+                    ASG_NAME: ${{ vars.ASG_NAME }}
+                    REFRESH_ID: ${{ steps.refresh.outputs.refresh_id }}
+                  run: |
+                    echo "⏳ Instance Refresh 완료 대기 중..."
+
+                    for i in $(seq 1 30); do
+                      STATUS=$(aws autoscaling describe-instance-refreshes \
+                        --auto-scaling-group-name "$ASG_NAME" \
+                        --instance-refresh-ids "$REFRESH_ID" \
+                        --query 'InstanceRefreshes[0].Status' \
+                        --output text)
+
+                      echo "시도 ${i}/30 - 상태: ${STATUS}"
+
+                      if [ "$STATUS" = "Successful" ]; then
+                        echo "Instance Refresh 성공"
+                        exit 0
+                      elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+                        echo "Instance Refresh 실패: $STATUS"
+                        exit 1
+                      fi
+
+                      sleep 30
+                    done
+
+                    echo "Instance Refresh 타임아웃"
+                    exit 1
