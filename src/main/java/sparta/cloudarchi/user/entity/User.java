@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import sparta.cloudarchi.user.dto.UserRequestDto;
 
 @Getter
@@ -25,9 +26,14 @@ public class User {
     @Column
     private String mbti;
 
+    @Setter
+    @Column
+    private String profile_key;
+
     public User(UserRequestDto userRequestDto) {
         this.username = userRequestDto.getUsername();
         this.age = userRequestDto.getAge();
         this.mbti = userRequestDto.getMbti();
     }
+
 }

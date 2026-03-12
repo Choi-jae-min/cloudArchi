@@ -8,19 +8,18 @@ import org.springframework.web.multipart.MultipartFile;
 import sparta.cloudarchi.global.exception.s3.S3UploadFailException;
 
 import java.io.IOException;
-import java.net.URL;
-import java.time.Duration;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class S3Service {
-    private static final Duration PRESIGNED_URL_EXPIRATION = Duration.ofDays(7);
-
     private final S3Template s3Template;
 
     @Value("${app.s3.bucket}")
     private String bucket;
+
+    @Value("${app.cloudfront.url}")
+    private String cloudFrontUrl;
 
     public String upload(MultipartFile file) {
         try {
@@ -32,7 +31,7 @@ public class S3Service {
         }
     }
 
-    public URL getDownloadUrl(String key) {
-        return s3Template.createSignedGetURL(bucket, "uploads/" + key, PRESIGNED_URL_EXPIRATION);
+    public String getDownloadUrl(String key) {
+        return cloudFrontUrl + "/" + key;
     }
 }

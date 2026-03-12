@@ -1,6 +1,8 @@
 app:
   s3:
     bucket: ${BUCKET_NAME}
+  cloudfront:
+    url: ${CDN_URL}
 
 spring:
   config:
@@ -13,7 +15,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: create-drop
     show-sql: false
 
 management:
