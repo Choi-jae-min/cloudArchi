@@ -62,28 +62,34 @@ S3와 CloudFront를 활용하여 이미지 업로드 및 정적 리소스 제공
 요금 폭탄을 맞지않기 위해 budget을 설정 해 주었습니다.
 1. 설정 완료된 AWS Budgets 화면을 캡처하여 README.md에 첨부하세요.
 기존 85% -> 80 에서 알림이 오도록 설정하였습니다
+<img width="1405" height="598" alt="Image" src="https://github.com/user-attachments/assets/aa4f0f1d-0d26-4e64-b44c-f0fef666337d" />
 
 ### Lv 1. 
 ec2서버를 실행시키고
 profile을 분리하고 interceptor에서 로그를 작성 하였습니다.
 1. 설정 완료된 EC2의 퍼블릭 IP 를 README.md에 첨부하세요.
-52.79.75.227
+
+IP : 52.79.75.227
+<img width="2068" height="512" alt="Image" src="https://github.com/user-attachments/assets/ff86fed8-7b10-4413-b3c0-93aa648f76cc" />
 
 ### Lv 2.
 RDS DB서버를 구축하고 EC2 보안그룹을 인바운드 규칙에 넣어 보안그룹 체이닝을 경험 하였습니다. 
 또한 DB 엔드포인트등 중요한 정보를 parametorStore 에 저장하고 불러올 수 있도록 하였습니다.
 
 1. Parameter Store에 저장한 team-name 값이 /actuator/info 엔드포인트에서 조회되도록 설정하세요.
-http://52.79.75.227:8080/actuator/info
+
+address : http://52.79.75.227:8080/actuator/info
 <img width="1027" height="171" alt="image" src="https://github.com/user-attachments/assets/f4cef692-7103-4640-9f3b-0173bf0ef5d7" />
 <img width="683" height="476" alt="image" src="https://github.com/user-attachments/assets/fef8cf03-7ce8-4abd-8c17-dd32131cd486" />
 
-2. 소스(Source) 부분에 IP 주소(0.0.0.0/0)가 아닌, EC2의 보안 그룹 ID (sg-xxxxx)가 등록되어 있음을 보여주어야 합니다.
+3. 소스(Source) 부분에 IP 주소(0.0.0.0/0)가 아닌, EC2의 보안 그룹 ID (sg-xxxxx)가 등록되어 있음을 보여주어야 합니다.
+<img width="3394" height="1128" alt="Image" src="https://github.com/user-attachments/assets/cd972ad3-9ae4-4ef4-a085-446264eca336" />
 
 ### Lv 3.
 S3를 **퍼블릭 차단**으로 생성하고 S3 접근 권한이 있는 IAM Role을 생성해 EC2에 연결하였습니다.
 POST , GET /api/members/{memberId}/profile-image 엔드포인트를 통해 이미지를 업로드하고 다운 받을 수 있도록 하였습니다
 1. S3 이미지 접근 성공 스크린샷을 확보하여 README.md 에 첨부
+<img width="1996" height="829" alt="Image" src="https://github.com/user-attachments/assets/ed25c013-56c6-4b0e-89bd-ef948e878292" />
 
 ## 도전 과제
 
@@ -91,8 +97,10 @@ POST , GET /api/members/{memberId}/profile-image 엔드포인트를 통해 이�
 github actions 에 workflows를 활용하여 CI/CD 를 구축하였습니다. 러너 서버가 자동으로 이미지를 빌드하고
 도커 허브에 로그인하여 생성한 이미지를 push하고 SSM 을 통해 private ec2에 접속해 도커 이미지를 pull하고 컨테이너를 실행 시켰습니다.
 1.  Actions 탭에서 배포 워크플로우가 초록색 체크(Success)로 표시된 화면을 캡처 후 README.md에 올려 주세요
+<img width="1044" height="635" alt="Image" src="https://github.com/user-attachments/assets/b4163d08-83e9-482d-8fb1-b0a46e23ae2d" />
 
 2. sudo docker ps 명령어를 입력했을 때, 실행 중인 컨테이너 목록이 나오는 화면을 캡처 후 README.md에 올려 주세요
+<img width="2098" height="96" alt="Image" src="https://github.com/user-attachments/assets/66806a17-385d-46f0-8c97-19d3058fdb3a" />
 
 ### Lv 5.
 기존 public 서브넷에 있던 EC2,RDS를 private으로 옮기고 natGateWay를 통해 외부로 요청만 가능한 상태로 하였습니다
@@ -101,10 +109,56 @@ ALB를 해당 VPC의 퍼블릭 서브넷에 EC2앞에두어서 ALB를 통해 ec2
 또한 ASG의 시작 템플릿을 제작하여 ALB와 연결하여 트래픽이나 CPU 사용량에 따라 EC2가 자동으로 생성/삭제되도록 구성 하였습니다.
 
 1. HTTPS 적용된 도메인 URL
+
    https://api.godofsparta.click/actuator/health
    
 3. Target Group(대상 그룹) 이미지
+<img width="2286" height="892" alt="Image" src="https://github.com/user-attachments/assets/395e65e8-ca24-4f94-8f59-8f7d0982dadf" />
 
 ### Lv 6.
 1. CloudFront 이미지 URL
+   
    https://godofsparta.click/uploads/1127dd43-849b-4385-b143-af16c03588f1_%EA%B0%95%EC%A5%90.jpg
+
+----------------
+### 실행 방법
+저장소 클론 후 아래 정보를 yml 파일에 입력 해주어야합니다.
+```
+      app:
+        s3:
+          bucket: YOUR-BUCKET-NAME
+        cloudfront:
+          url: YOUR-CND-URL
+      
+      spring: -> aws 자격증명 aws configure 사용 
+        cloud:
+          aws:
+            region:
+              static: ap-northeast-2
+      
+        datasource: -> local.yml 인경우 h2 DB
+          url: jdbc:h2:mem:testdb
+          driver-class-name: org.h2.Driver
+          username: sa
+          password:
+      
+        h2:
+          console:
+            enabled: true
+            path: /h2-console
+      
+        jpa:
+          hibernate:
+            ddl-auto: create-drop
+          show-sql: true
+          properties:
+            hibernate:
+              format_sql: true
+      
+      management:
+        endpoints:
+          web:
+            exposure:
+              include: health
+
+```
